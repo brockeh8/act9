@@ -12,63 +12,120 @@ class BarebonesSpooky extends StatefulWidget {
 }
 
 class _BarebonesSpookyState extends State<BarebonesSpooky> {
-  final _rng = Random();
-  late List<_Item> items;
-  Timer? _timer;
-  bool _flash = false;
-  bool _won = false;
-
-  // Audio players
-  final AudioPlayer _effectPlayer = AudioPlayer();
   final AudioPlayer _bgPlayer = AudioPlayer();
+  final AudioPlayer _effectPlayer = AudioPlayer();
+
+  final List<_LevelConfig> _levels = const [
+    _LevelConfig(name: 'Level 1', traps: 5, retargetSec: 2.0, minMs: 900, maxMs: 1800),
+    _LevelConfig(name: 'Level 2', traps: 15, retargetSec: 1.3, minMs: 600, maxMs: 1200),
+    _LevelConfig(name: 'Level 3', traps: 100, retargetSec: 1.0, minMs: 400, maxMs: 900),
+  ];
 
   @override
   void initState() {
     super.initState();
-
-    // Start background music
     _playBackgroundMusic();
-
-    // Initialize spooky items
-    items = [
-      _Item('🎃', isGoal: true, size: 56),
-      _Item('👻', isGoal: false, size: 50),
-      _Item('🦇', isGoal: false, size: 46),
-      _Item('🕷️', isGoal: false, size: 42),
-    ];
-    for (final it in items) {
-      it.next = _randPos();
-      it.durMs = 900 + _rng.nextInt(900);
-    }
-
-    // Timer to move items around
-    _timer = Timer.periodic(const Duration(seconds: 2), (_) {
-      if (!mounted) return;
-      setState(() {
-        for (final it in items) {
-          it.next = _randPos();
-          it.durMs = 800 + _rng.nextInt(1200);
-        }
-      });
-    });
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
     _bgPlayer.dispose();
     _effectPlayer.dispose();
     super.dispose();
   }
 
   Future<void> _playBackgroundMusic() async {
-    await _bgPlayer.setReleaseMode(ReleaseMode.loop); // loop forever
+    await _bgPlayer.setReleaseMode(ReleaseMode.loop);
     await _bgPlayer.play(AssetSource('WGH.mp3'));
   }
 
   Future<void> _playScarySound() async {
     await _effectPlayer.play(AssetSource('bbc_screaming-_07034117.mp3'));
   }
+
+  @override
+  Widget build(BuildContext context) {
+    return PageView.builder(
+      itemCount: _levels.length,
+      itemBuilder: (_, i) => _LevelPage(
+        config: _levels[i],
+        onHelpPressed: _playScarySound, 
+      ),
+    );
+  }
+}
+
+class _LevelPage extends StatefulWidget {
+  const _LevelPage({required this.config, required this.onHelpPressed});
+  final _LevelConfig config;
+  final Future<void> Function() onHelpPressed;
+
+  @override
+  State<_LevelPage> createState() => _LevelPageState();
+}
+
+class _LevelPageState extends State<_LevelPage> {
+  final _rng = Random();
+  late List<_Item> items;
+  Timer? _timer;
+  bool _flash = false;
+  bool _won = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _buildItems();
+    _startTimer();
+  }
+
+  @override
+  void didUpdateWidget(covariant _LevelPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.config != widget.config) {
+      _timer?.cancel();
+      _won = false;
+      _flash = false;
+      _buildItems();
+      _startTimer();
+      setState(() {});
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _buildItems() {
+    final ghosts = ['👻','🦇','🕷️','☠️','🧙‍♀️','🧟‍♂️','🧛‍♀️','🧌','🪦'];
+    items = [
+      _Item('🎃', isGoal: true, size: 25.0),
+      for (int i = 0; i < widget.config.traps; i++)
+        _Item(ghosts[i % ghosts.length], isGoal: false, size: 42.0 + _rng.nextInt(12).toDouble()),
+    ];
+    for (final it in items) {
+      it.next = _randPos();
+      it.durMs = _randMs();
+    }
+  }
+
+  void _startTimer() {
+    _timer = Timer.periodic(
+      Duration(milliseconds: (widget.config.retargetSec * 1000).round()),
+      (_) {
+        if (!mounted) return;
+        setState(() {
+          for (final it in items) {
+            it.next = _randPos();
+            it.durMs = _randMs();
+          }
+        });
+      },
+    );
+  }
+
+  int _randMs() => widget.config.minMs + _rng.nextInt(widget.config.maxMs - widget.config.minMs + 1);
 
   Offset _randPos() => Offset(
         0.08 + _rng.nextDouble() * 0.84,
@@ -93,7 +150,7 @@ class _BarebonesSpookyState extends State<BarebonesSpooky> {
       _flash = false;
       for (final it in items) {
         it.next = _randPos();
-        it.durMs = 900 + _rng.nextInt(900);
+        it.durMs = _randMs();
       }
     });
   }
@@ -111,20 +168,26 @@ class _BarebonesSpookyState extends State<BarebonesSpooky> {
           right: 0,
           child: Column(
             children: [
-              Text('Find the 🎃',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                      fontSize: 26,
-                      color: Colors.orangeAccent,
-                      fontWeight: FontWeight.w800)),
+              Text(
+                'Find the 🎃 — Swipe for more levels',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 22,
+                  color: Colors.orangeAccent,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
               SizedBox(height: 6),
-              Text('Tap carefully—some are traps!',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white70)),
+              Text(
+                'Tap carefully—some are traps!',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white70),
+              ),
             ],
           ),
         ),
 
+        // moving items
         ...items.map((it) {
           final left = it.next.dx * w;
           final top = it.next.dy * h;
@@ -135,17 +198,18 @@ class _BarebonesSpookyState extends State<BarebonesSpooky> {
             top: top,
             child: GestureDetector(
               onTap: () => _tap(it),
-              child: Text(it.emoji,
-                  style: TextStyle(
-                    fontSize: it.size,
-                    shadows: const [
-                      Shadow(blurRadius: 8, color: Colors.deepOrange)
-                    ],
-                  )),
+              child: Text(
+                it.emoji,
+                style: TextStyle(
+                  fontSize: it.size,
+                  shadows: const [Shadow(blurRadius: 8, color: Colors.deepOrange)],
+                ),
+              ),
             ),
           );
         }),
 
+        // red flash 
         if (_flash)
           IgnorePointer(
             child: AnimatedOpacity(
@@ -155,32 +219,33 @@ class _BarebonesSpookyState extends State<BarebonesSpooky> {
             ),
           ),
 
+        // win screen
         if (_won)
           Positioned.fill(
             child: Container(
               color: Colors.black54,
               child: Center(
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  const Text('You Found It!',
-                      style: TextStyle(
-                          fontSize: 36,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.orange)),
+                  const Text(
+                    'You Found It!',
+                    style: TextStyle(fontSize: 36, fontWeight: FontWeight.w900, color: Colors.orange),
+                  ),
                   const SizedBox(height: 12),
                   ElevatedButton.icon(
                     onPressed: _reset,
                     icon: const Icon(Icons.replay),
                     label: const Text('Play Again'),
                     style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orange.shade700,
-                        foregroundColor: Colors.white),
+                      backgroundColor: Colors.orange.shade700,
+                      foregroundColor: Colors.white,
+                    ),
                   )
                 ]),
               ),
             ),
           ),
 
-        //BUTTON plays scary sound
+        // Help button
         Positioned(
           bottom: 20,
           right: 20,
@@ -188,12 +253,26 @@ class _BarebonesSpookyState extends State<BarebonesSpooky> {
             backgroundColor: Colors.redAccent,
             icon: const Icon(Icons.help_outline, color: Colors.white),
             label: const Text('Help', style: TextStyle(color: Colors.white)),
-            onPressed: _playScarySound,
+            onPressed: widget.onHelpPressed,
           ),
         ),
       ]);
     });
   }
+}
+
+class _LevelConfig {
+  const _LevelConfig({
+    required this.name,
+    required this.traps,
+    required this.retargetSec,
+    required this.minMs,
+    required this.maxMs,
+  });
+  final String name;
+  final int traps;
+  final double retargetSec; 
+  final int minMs, maxMs;   
 }
 
 class _Item {
