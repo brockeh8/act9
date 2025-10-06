@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 void main() => runApp(const MaterialApp(debugShowCheckedModeBanner: false, home: BarebonesSpooky()));
 
@@ -16,6 +17,7 @@ class _BarebonesSpookyState extends State<BarebonesSpooky> {
   Timer? _timer;
   bool _flash = false;
   bool _won = false;
+  final AudioPlayer _audioPlayer = AudioPlayer();
 
   @override
   void initState() {
@@ -44,6 +46,7 @@ class _BarebonesSpookyState extends State<BarebonesSpooky> {
   @override
   void dispose() {
     _timer?.cancel();
+    _audioPlayer.dispose();
     super.dispose();
   }
 
@@ -74,6 +77,10 @@ class _BarebonesSpookyState extends State<BarebonesSpooky> {
       }
     });
   }
+// Play scary sound
+  Future<void> _playScarySound() async {
+    await _audioPlayer.play(AssetSource('bbc_screaming-_07034117.mp3'));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -83,37 +90,45 @@ class _BarebonesSpookyState extends State<BarebonesSpooky> {
         Container(color: const Color(0xFF0E0E12)),
 
         const Positioned(
-          top: 16, left: 0, right: 0,
+          top: 16,
+          left: 0,
+          right: 0,
           child: Column(
             children: [
               Text('Find the 🎃',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 26, color: Colors.orangeAccent, fontWeight: FontWeight.w800)),
+                  style: TextStyle(
+                      fontSize: 26,
+                      color: Colors.orangeAccent,
+                      fontWeight: FontWeight.w800)),
               SizedBox(height: 6),
               Text('Tap carefully—some are traps!',
-                  textAlign: TextAlign.center, style: TextStyle(color: Colors.white70)),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white70)),
             ],
           ),
         ),
 
-
         ...items.map((it) {
           final left = it.next.dx * w;
-          final top  = it.next.dy * h;
+          final top = it.next.dy * h;
           return AnimatedPositioned(
             duration: Duration(milliseconds: it.durMs),
             curve: Curves.easeInOut,
-            left: left, top: top,
+            left: left,
+            top: top,
             child: GestureDetector(
               onTap: () => _tap(it),
-              child: Text(it.emoji, style: TextStyle(
-                fontSize: it.size,
-                shadows: const [Shadow(blurRadius: 8, color: Colors.deepOrange)],
-              )),
+              child: Text(it.emoji,
+                  style: TextStyle(
+                    fontSize: it.size,
+                    shadows: const [
+                      Shadow(blurRadius: 8, color: Colors.deepOrange)
+                    ],
+                  )),
             ),
           );
         }),
-
 
         if (_flash)
           IgnorePointer(
@@ -124,7 +139,6 @@ class _BarebonesSpookyState extends State<BarebonesSpooky> {
             ),
           ),
 
-
         if (_won)
           Positioned.fill(
             child: Container(
@@ -132,19 +146,35 @@ class _BarebonesSpookyState extends State<BarebonesSpooky> {
               child: Center(
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
                   const Text('You Found It!',
-                      style: TextStyle(fontSize: 36, fontWeight: FontWeight.w900, color: Colors.orange)),
+                      style: TextStyle(
+                          fontSize: 36,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.orange)),
                   const SizedBox(height: 12),
                   ElevatedButton.icon(
                     onPressed: _reset,
                     icon: const Icon(Icons.replay),
                     label: const Text('Play Again'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange.shade700, foregroundColor: Colors.white),
+                        backgroundColor: Colors.orange.shade700,
+                        foregroundColor: Colors.white),
                   )
                 ]),
               ),
             ),
           ),
+
+        // BUTTON at bottom-right
+        Positioned(
+          bottom: 20,
+          right: 20,
+          child: FloatingActionButton.extended(
+            backgroundColor: Colors.redAccent,
+            icon: const Icon(Icons.help_outline, color: Colors.white),
+            label: const Text('Help', style: TextStyle(color: Colors.white)),
+            onPressed: _playScarySound,
+          ),
+        ),
       ]);
     });
   }
