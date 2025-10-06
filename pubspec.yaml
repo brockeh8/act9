@@ -55,6 +55,7 @@ dev_dependencies:
 flutter:
   assets:
   - assets/bbc_screaming-_07034117.mp3
+  - assets/WGH.mp3
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

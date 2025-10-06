@@ -17,11 +17,19 @@ class _BarebonesSpookyState extends State<BarebonesSpooky> {
   Timer? _timer;
   bool _flash = false;
   bool _won = false;
-  final AudioPlayer _audioPlayer = AudioPlayer();
+
+  // Audio players
+  final AudioPlayer _effectPlayer = AudioPlayer();
+  final AudioPlayer _bgPlayer = AudioPlayer();
 
   @override
   void initState() {
     super.initState();
+
+    // Start background music
+    _playBackgroundMusic();
+
+    // Initialize spooky items
     items = [
       _Item('🎃', isGoal: true, size: 56),
       _Item('👻', isGoal: false, size: 50),
@@ -32,6 +40,8 @@ class _BarebonesSpookyState extends State<BarebonesSpooky> {
       it.next = _randPos();
       it.durMs = 900 + _rng.nextInt(900);
     }
+
+    // Timer to move items around
     _timer = Timer.periodic(const Duration(seconds: 2), (_) {
       if (!mounted) return;
       setState(() {
@@ -46,8 +56,18 @@ class _BarebonesSpookyState extends State<BarebonesSpooky> {
   @override
   void dispose() {
     _timer?.cancel();
-    _audioPlayer.dispose();
+    _bgPlayer.dispose();
+    _effectPlayer.dispose();
     super.dispose();
+  }
+
+  Future<void> _playBackgroundMusic() async {
+    await _bgPlayer.setReleaseMode(ReleaseMode.loop); // loop forever
+    await _bgPlayer.play(AssetSource('WGH.mp3'));
+  }
+
+  Future<void> _playScarySound() async {
+    await _effectPlayer.play(AssetSource('bbc_screaming-_07034117.mp3'));
   }
 
   Offset _randPos() => Offset(
@@ -76,10 +96,6 @@ class _BarebonesSpookyState extends State<BarebonesSpooky> {
         it.durMs = 900 + _rng.nextInt(900);
       }
     });
-  }
-// Play scary sound
-  Future<void> _playScarySound() async {
-    await _audioPlayer.play(AssetSource('bbc_screaming-_07034117.mp3'));
   }
 
   @override
@@ -164,7 +180,7 @@ class _BarebonesSpookyState extends State<BarebonesSpooky> {
             ),
           ),
 
-        // BUTTON at bottom-right
+        //BUTTON plays scary sound
         Positioned(
           bottom: 20,
           right: 20,
